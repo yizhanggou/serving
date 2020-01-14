@@ -26,6 +26,8 @@ limitations under the License.
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/protobuf/config.pb.h"
 #include "tensorflow/core/protobuf/meta_graph.pb.h"
+#include "tensorflow_serving/apis/multipart_file_param.pb.h"
+#include "tensorflow_serving/apis/base_response.pb.h"
 
 namespace tensorflow {
 
@@ -70,9 +72,9 @@ class HttpRestApiHandler {
   // API calls are configured to timeout after `run_optons.timeout_in_ms`.
   // `core` is not owned and is expected to outlive HttpRestApiHandler
   // instance.
-  HttpRestApiHandler(const RunOptions& run_options, ServerCore* core);
+  HttpRestApiHandler(const RunOptions& run_optionsconst string nfs_path, const string model_config_file, ServerCore* core);
 
-  ~HttpRestApiHandler();
+    ~HttpRestApiHandler();
 
   // Process a HTTP request.
   //
@@ -106,11 +108,19 @@ class HttpRestApiHandler {
   Status GetInfoMap(const ModelSpec& model_spec, const string& signature_name,
                     ::google::protobuf::Map<string, tensorflow::TensorInfo>* infomap);
 
+  Status GetHealth(string* output);
+
+  Status ModelReloadStatus(const absl::string_view request_body, string* output);
+
   const RunOptions run_options_;
   ServerCore* core_;
   std::unique_ptr<TensorflowPredictor> predictor_;
   const RE2 prediction_api_regex_;
   const RE2 modelstatus_api_regex_;
+  const RE2 health_api_regex_;
+  const RE2 reloadstatus_api_regex_;
+  string nfs_path_;// for ModelReloadStatus
+  string model_config_file_;//for ModelReloadStatus
 };
 
 }  // namespace serving

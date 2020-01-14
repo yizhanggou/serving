@@ -172,6 +172,25 @@ cc_test(
     ],
 )
 
+cc_library(
+    name = "get_model_reload_status_impl",
+    srcs = ["get_model_reload_status_impl.cc"],
+    hdrs = ["get_model_reload_status_impl.h"],
+    visibility = [
+        "//visibility:public",
+    ],
+    deps = [
+        ":server_core",
+        "//tensorflow_serving/apis:multipart_file_param_proto",
+        "//tensorflow_serving/apis:base_response_proto",
+        "//tensorflow_serving/core:servable_state",
+        "//tensorflow_serving/core:servable_state_monitor",
+        "//tensorflow_serving/util:status_proto",
+        "//tensorflow_serving/util:status_util",
+        "@org_tensorflow//tensorflow/core:lib",
+    ],
+)
+
 cc_test(
     name = "http_rest_api_handler_test",
     size = "medium",
@@ -208,6 +227,7 @@ cc_library(
     hdrs = ["model_service_impl.h"],
     deps = [
         ":get_model_status_impl",
+        ":get_model_reload_status_impl",
         ":grpc_status_util",
         ":server_core",
         "//tensorflow_serving/apis:model_management_cc_proto",
@@ -276,9 +296,13 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":get_model_status_impl",
+        ":get_model_reload_status_impl",
         ":server_core",
         "//tensorflow_serving/apis:model_cc_proto",
         "//tensorflow_serving/apis:predict_cc_proto",
+        "//tensorflow_serving/apis:health_proto",
+        "//tensorflow_serving/apis:base_response_proto",
+        "//tensorflow_serving/apis:multipart_file_param_proto",
         "//tensorflow_serving/core:servable_handle",
         "//tensorflow_serving/servables/tensorflow:classification_service",
         "//tensorflow_serving/servables/tensorflow:get_model_metadata_impl",

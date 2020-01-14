@@ -123,11 +123,11 @@ class RequestExecutor final : public net_http::EventExecutor {
 
 class RestApiRequestDispatcher {
  public:
-  RestApiRequestDispatcher(int timeout_in_ms, ServerCore* core)
+  RestApiRequestDispatcher(int timeout_in_ms, const string nfs_path, const string model_config_file, ServerCore* core)
       : regex_(HttpRestApiHandler::kPathRegex) {
     RunOptions run_options = RunOptions();
     run_options.set_timeout_in_ms(timeout_in_ms);
-    handler_.reset(new HttpRestApiHandler(run_options, core));
+    handler_.reset(new HttpRestApiHandler(run_options, nfs_path, model_config_file, core));
   }
 
   net_http::RequestHandler Dispatch(net_http::ServerRequestInterface* req) {
@@ -179,7 +179,8 @@ class RestApiRequestDispatcher {
 
 std::unique_ptr<net_http::HTTPServerInterface> CreateAndStartHttpServer(
     int port, int num_threads, int timeout_in_ms,
-    const MonitoringConfig& monitoring_config, ServerCore* core) {
+    const MonitoringConfig& monitoring_config, ServerCore* core,
+    const string nfs_path, const string model_config_file) {
   auto options = absl::make_unique<net_http::ServerOptions>();
   options->AddPort(static_cast<uint32_t>(port));
   options->SetExecutor(absl::make_unique<RequestExecutor>(num_threads));
@@ -207,7 +208,7 @@ std::unique_ptr<net_http::HTTPServerInterface> CreateAndStartHttpServer(
   }
 
   std::shared_ptr<RestApiRequestDispatcher> dispatcher =
-      std::make_shared<RestApiRequestDispatcher>(timeout_in_ms, core);
+      std::make_shared<RestApiRequestDispatcher>(timeout_in_ms, nfs_path, model_config_file, core);
   net_http::RequestHandlerOptions handler_options;
   server->RegisterRequestDispatcher(
       [dispatcher](net_http::ServerRequestInterface* req) {

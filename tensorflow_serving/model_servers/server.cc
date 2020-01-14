@@ -373,7 +373,7 @@ Status Server::BuildAndStart(const Options& server_options) {
       http_server_ = CreateAndStartHttpServer(
           server_options.http_port, server_options.http_num_threads,
           server_options.http_timeout_in_ms, monitoring_config,
-          server_core_.get());
+          server_core_.get(), server_options.nfs_path, server_options.model_config_file);
       if (http_server_ != nullptr) {
         LOG(INFO) << "Exporting HTTP/REST API at:" << server_address << " ...";
       } else {

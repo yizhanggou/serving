@@ -31,12 +31,14 @@ limitations under the License.
 #include "tensorflow_serving/apis/predict.pb.h"
 #include "tensorflow_serving/core/servable_handle.h"
 #include "tensorflow_serving/model_servers/get_model_status_impl.h"
+#include "tensorflow_serving/model_servers/get_model_reload_status_impl.h"
 #include "tensorflow_serving/model_servers/server_core.h"
 #include "tensorflow_serving/servables/tensorflow/classification_service.h"
 #include "tensorflow_serving/servables/tensorflow/get_model_metadata_impl.h"
 #include "tensorflow_serving/servables/tensorflow/predict_impl.h"
 #include "tensorflow_serving/servables/tensorflow/regression_service.h"
 #include "tensorflow_serving/util/json_tensor.h"
+#include "tensorflow_serving/apis/health.pb.h"
 
 namespace tensorflow {
 namespace serving {
@@ -49,6 +51,8 @@ using tensorflow::serving::TensorflowPredictor;
 const char* const HttpRestApiHandler::kPathRegex = "(?i)/v1/.*";
 
 HttpRestApiHandler::HttpRestApiHandler(const RunOptions& run_options,
+                                       const string nfs_path,
+                                       const string model_config_file,
                                        ServerCore* core)
     : run_options_(run_options),
       core_(core),
@@ -56,7 +60,13 @@ HttpRestApiHandler::HttpRestApiHandler(const RunOptions& run_options,
       prediction_api_regex_(
           R"((?i)/v1/models/([^/:]+)(?:/versions/(\d+))?:(classify|regress|predict))"),
       modelstatus_api_regex_(
-          R"((?i)/v1/models(?:/([^/:]+))?(?:/versions/(\d+))?(?:\/(metadata))?)") {
+          R"((?i)/v1/models(?:/([^/:]+))?(?:/versions/(\d+))?(?:\/(metadata))?)"),
+      health_api_regex_(
+              R"((?i)/v1/health)"),
+      reloadstatus_api_regex_(
+              R"((?i)/v1/reloadstatus)"),
+      nfs_path_(nfs_path),
+      model_config_file_(model_config_file){
 }
 
 HttpRestApiHandler::~HttpRestApiHandler() {}
@@ -122,6 +132,14 @@ Status HttpRestApiHandler::ProcessRequest(
     } else {
       status = ProcessModelStatusRequest(model_name, model_version_str, output);
     }
+  } else if (http_method == "GET" &&
+             RE2::FullMatch(string(request_path), health_api_regex_)) {
+      status = GetHealth(output);
+  } else if (http_method == "POST" &&
+             RE2::FullMatch(string(request_path), reloadstatus_api_regex_)) {
+      status = ModelReloadStatus(request_body, output);
+  } else {
+      LOG(INFO) << "No matching function to handle this request";
   }
 
   if (!status.ok()) {
@@ -318,6 +336,52 @@ Status HttpRestApiHandler::GetInfoMap(
   }
   *infomap = iter->second.inputs();
   return Status::OK();
+}
+
+
+Status HttpRestApiHandler::GetHealth(string* output) {
+    HealthResponse response;
+    response.set_status("UP");// always UP
+    JsonPrintOptions opts;
+    opts.add_whitespace = true;
+    opts.always_print_primitive_fields = true;
+    // Note this is protobuf::util::Status (not TF Status) object.
+    const auto& status = MessageToJsonString(response, output, opts);
+    if (!status.ok()) {
+        return errors::Internal("Failed to convert proto to json. Error: ",
+                                status.ToString());
+    }
+    return Status::OK();
+}
+
+Status HttpRestApiHandler::ModelReloadStatus(const absl::string_view request_body, string* output) {
+    // extract MultipartFileParam
+    MultipartFileParam request;
+//    TF_RETURN_IF_ERROR(FillMultipartFileParamRequestFromJson(
+//            request_body,
+//            nfs_path_,
+//            &request));
+
+    BaseResponse response;
+    Status status = FillMultipartFileParamRequestFromJson(request_body, nfs_path_, &request);
+    if (!status.ok()) {
+        response.set_code(GetModelReloadStatusImpl::RELOAD_ERROR);
+        response.set_msg(status.error_message());
+    } else {
+        // get model reload status
+        GetModelReloadStatusImpl::GetModelReloadStatus(core_, request, model_config_file_, &response);
+    }
+
+    // package response
+    JsonPrintOptions opts;
+    opts.add_whitespace = true;
+    opts.always_print_primitive_fields = true;
+    status = MessageToJsonString(response, output, opts);
+    if (!status.ok()) {
+        return errors::Internal("Failed to convert proto to json. Error: ",
+                                status.ToString());
+    }
+    return Status::OK();
 }
 
 }  // namespace serving

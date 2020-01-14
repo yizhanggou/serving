@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+option cc_enable_arenas = true;
+
+package tensorflow.serving;
+
+message MultipartFileParam {
+    //for cms, check new model load valid
+    string name = 1;
+    string file_path = 2;
+}

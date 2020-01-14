@@ -347,6 +347,7 @@ cc_library(
         "//tensorflow_serving/apis:model_cc_proto",
         "//tensorflow_serving/apis:predict_cc_proto",
         "//tensorflow_serving/apis:regression_cc_proto",
+        "//tensorflow_serving/apis:multipart_file_param_proto",
         "@com_github_tencent_rapidjson//:rapidjson",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",

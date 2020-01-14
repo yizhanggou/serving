@@ -15,6 +15,7 @@ limitations under the License.
 
 #include "tensorflow_serving/util/json_tensor.h"
 
+#include "re2/re2.h"
 #include <cstdlib>
 #include <limits>
 #include <string>
@@ -38,6 +39,7 @@ limitations under the License.
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/lib/core/stringpiece.h"
+#include "tensorflow/core/lib/io/path.h"
 #include "tensorflow_serving/apis/input.pb.h"
 #include "tensorflow_serving/apis/model.pb.h"
 
@@ -634,6 +636,20 @@ Status FillTensorMapFromInputsMap(
   return Status::OK();
 }
 
+void trim(string& str) {
+    string::size_type pos_begin = str.find_first_not_of(' ');
+    if (pos_begin == string::npos) {
+        return;
+    }
+    string::size_type pos_end = str.find_last_not_of(' ');
+    if (pos_end == string::npos) {
+        str = str.substr(pos_begin);
+        return;
+    }
+    str = str.substr(pos_begin, pos_end - pos_begin + 1);
+    return;
+}
+
 }  // namespace
 
 Status FillPredictRequestFromJson(
@@ -688,6 +704,78 @@ Status FillPredictRequestFromJson(
                                       request->mutable_inputs());
   }
   return errors::InvalidArgument("Missing 'inputs' or 'instances' key");
+}
+
+Status FillMultipartFileParamRequestFromJson(
+        const absl::string_view json,
+        string nfs_path,
+        MultipartFileParam* request) {
+
+    string name;
+    string filePath;
+    string projectId;
+    string serviceId;
+    if (RE2::FullMatch(json, "{.*}")) {//json format
+
+        rapidjson::Document doc;
+        try {
+            TF_RETURN_IF_ERROR(ParseJson(json, &doc));
+        } catch (...) {
+            LOG(ERROR) << "fail to parse json:" << json;
+            return errors::InvalidArgument("parse json error");
+        }
+
+        auto itr_doc = doc.FindMember("name");
+        if (itr_doc == doc.MemberEnd() || !itr_doc->value.IsString()) {
+            LOG(ERROR) << "no String name";
+            return FormatError(doc, "Excepting \'String name\' in request");
+        }
+        name = string(itr_doc->value.GetString());
+
+        itr_doc = doc.FindMember("filePath");
+        if (itr_doc == doc.MemberEnd() || !itr_doc->value.IsString()) {
+            LOG(ERROR) << "no String filePath";
+            return FormatError(doc, "Excepting \'String filePath\' in request");
+        }
+        filePath = string(itr_doc->value.GetString());
+
+        itr_doc = doc.FindMember("projectId");
+        if (itr_doc == doc.MemberEnd() || !itr_doc->value.IsString()) {
+            LOG(INFO) << "no projectId";
+            return FormatError(doc, "Excepting \'String projectId\' in request");
+        }
+        projectId = string(itr_doc->value.GetString());
+
+        itr_doc = doc.FindMember("serviceId");
+        if (itr_doc == doc.MemberEnd() || !itr_doc->value.IsString()) {
+            LOG(INFO) << "no serviceId";
+            return FormatError(doc, "Excepting \'String serviceId\' in request");
+        }
+        serviceId = string(itr_doc->value.GetString());
+
+    } else if (RE2::FullMatch(json, "<.*>")) {//xml format
+        LOG(INFO) << "try to parse xml";
+        if (!RE2::FullMatch(string(json), R"((?i).*<name>(.*)</name>.*)", &name) ||
+            !RE2::FullMatch(string(json), R"((?i).*<filePath>(.*)</filePath>.*)", &filePath) ||
+            !RE2::FullMatch(string(json), R"((?i).*<projectId>(.*)</projectId>.*)", &projectId) ||
+            !RE2::FullMatch(string(json), R"((?i).*<serviceId>(.*)</serviceId>.*)", &serviceId)) {
+            LOG(ERROR) << "one of require fields missing: name,filePath,projectId,serviceId";
+            return errors::InvalidArgument("one of require fields missing: name,filePath,projectId,serviceId");
+        }
+
+    } else {
+        return errors::InvalidArgument("Neither json nor xml");
+    }
+    trim(name);
+    trim(nfs_path);
+    trim(projectId);
+    trim(serviceId);
+    trim(filePath);
+    request->set_name(name);
+    const string upload_file_path = io::JoinPath(nfs_path, projectId, serviceId, filePath);
+    request->set_file_path(upload_file_path);
+
+    return Status::OK();
 }
 
 namespace {

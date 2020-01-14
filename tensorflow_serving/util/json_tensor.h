@@ -26,6 +26,7 @@ limitations under the License.
 #include "tensorflow_serving/apis/classification.pb.h"
 #include "tensorflow_serving/apis/predict.pb.h"
 #include "tensorflow_serving/apis/regression.pb.h"
+#include "tensorflow_serving/apis/multipart_file_param.pb.h"
 
 namespace tensorflow {
 namespace serving {
@@ -148,6 +149,11 @@ tensorflow::Status FillPredictRequestFromJson(
         const string&, ::google::protobuf::Map<string, tensorflow::TensorInfo>*)>&
         get_tensorinfo_map,
     PredictRequest* request, JsonPredictRequestFormat* format);
+
+tensorflow::Status FillMultipartFileParamRequestFromJson(
+        const absl::string_view json,
+        string nfs_path,
+        MultipartFileParam* request);
 
 // Fills ClassificationRequest proto from a JSON object.
 //

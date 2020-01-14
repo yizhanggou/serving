@@ -192,7 +192,9 @@ int main(int argc, char** argv) {
                        "EXPERIMENTAL; CAN BE REMOVED ANYTIME! Load and use "
                        "TensorFlow Lite model from `model.tflite` file in "
                        "SavedModel directory instead of the TensorFlow model "
-                       "from `saved_model.pb` file.")};
+                       "from `saved_model.pb` file."),
+      tensorflow::Flag("nfs_path", &options.nfs_path,
+                       "nfs_path used to upload new model by CMS.")};
 
   const auto& usage = tensorflow::Flags::Usage(argv[0], flag_list);
   if (!tensorflow::Flags::Parse(&argc, argv, flag_list)) {

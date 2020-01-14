@@ -32,7 +32,8 @@ class ServerCore;
 // The returned server is in a state of accepting new requests.
 std::unique_ptr<net_http::HTTPServerInterface> CreateAndStartHttpServer(
     int port, int num_threads, int timeout_in_ms,
-    const MonitoringConfig& monitoring_config, ServerCore* core);
+    const MonitoringConfig& monitoring_config, ServerCore* core,
+    const string nfs_path, const string model_config_file);
 
 }  // namespace serving
 }  // namespace tensorflow

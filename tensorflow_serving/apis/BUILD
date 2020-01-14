@@ -238,6 +238,65 @@ serving_proto_library_py(
         "//tensorflow_serving/util:status_proto_py_pb2",
     ],
 )
+serving_proto_library(
+    name = "health_proto",
+    srcs = ["health.proto"],
+    cc_api_version = 2,
+    deps = [
+        ":model_proto",
+        "//tensorflow_serving/util:status_proto",
+    ],
+)
+
+serving_proto_library_py(
+    name = "health_proto_py_pb2",
+    srcs = ["health.proto"],
+    proto_library = "health_proto",
+    deps = [
+        ":model_proto_py_pb2",
+        "//tensorflow_serving/util:status_proto_py_pb2",
+    ],
+)
+
+serving_proto_library(
+    name = "base_response_proto",
+    srcs = ["base_response.proto"],
+    cc_api_version = 2,
+    deps = [
+        ":model_proto",
+        "//tensorflow_serving/util:status_proto",
+    ],
+)
+
+serving_proto_library_py(
+    name = "base_response_proto_py_pb2",
+    srcs = ["base_response.proto"],
+    proto_library = "base_response_proto",
+    deps = [
+        ":model_proto_py_pb2",
+        "//tensorflow_serving/util:status_proto_py_pb2",
+    ],
+)
+
+serving_proto_library(
+    name = "multipart_file_param_proto",
+    srcs = ["multipart_file_param.proto"],
+    cc_api_version = 2,
+    deps = [
+        ":model_proto",
+        "//tensorflow_serving/util:status_proto",
+    ],
+)
+
+serving_proto_library_py(
+    name = "multipart_file_param_proto_py_pb2",
+    srcs = ["multipart_file_param.proto"],
+    proto_library = "multipart_file_param_proto",
+    deps = [
+        ":model_proto_py_pb2",
+        "//tensorflow_serving/util:status_proto_py_pb2",
+    ],
+)
 
 serving_proto_library(
     name = "model_service_proto",
